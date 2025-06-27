@@ -1,0 +1,46 @@
+//https://doc.freefem.org/models/evolution-problems.html
+// Parameters
+real dt = 0.01;
+real mu = 0.10;
+
+// Mesh
+mesh Th = square(32, 32);
+
+// Fespace
+fespace Vh(Th, P1);
+Vh u, v, uold, f, g, udxExact, udyExact;
+
+// Problem
+problem dHeat (u, v)
+    = int2d(Th)(
+          u*v
+        + dt*mu*(dx(u)*dx(v) + dy(u)*dy(v))
+    )
+    + int2d(Th)(
+        - uold*v
+        - dt*f*v
+    )
+    + on(1, 2, 3, 4, u=g)
+    ;
+
+// Time loop
+real t = 0;
+uold = sin(pi*x)*sin(pi*y);
+
+for (int m = 0; m < 2/dt; m++){
+    // Update
+    t = t+dt;
+    f = (-2.0*pi^2 + mu)*sin(pi*x)*sin(pi*y)*exp(-2.0*pi^2*t);
+    g = sin(pi*x)*sin(pi*y)*exp(-2.0*pi^2*t);//t*x^4  ;
+    uold = u;
+
+    // Solve
+    dHeat;
+    Vh udx = dx(u), udy = dy(u);
+    // Plot
+    //plot(u, wait=true);
+    udxExact = pi * cos( pi * x) * sin(pi * y)*exp(-2.0*pi^2*t);
+    udyExact = pi * sin (pi * x) * cos(pi * y)*exp(-2.0*pi^2*t);
+    cout << "t=" << t << " - L^2-Error=" << sqrt(int2d(Th)((u-(sin(pi*x)*sin(pi*y)*exp(-2.0*pi^2*t)))^2)) << endl;
+    cout << "t=" << t << " - H^1-Error=" << sqrt(int2d(Th)((udx - udxExact )^ 2) + int2d(Th)((udy - udyExact) ^ 2)) <<endl;
+  }//time-loop

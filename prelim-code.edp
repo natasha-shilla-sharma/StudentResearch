@@ -1,0 +1,51 @@
+verbosity=0;
+macro grad(Y) [dx(Y),dy(Y)]//
+//fun fact! macro ended by //
+int MaxIter =4;// should not exceed 8.
+real[int] errL2(MaxIter), errInf(MaxIter), errH1(MaxIter);
+real[int] orderL2(MaxIter), orderInf(MaxIter), orderH1(MaxIter);
+int[int] lab=[1,1,1,1];
+int N;
+func f = 2.0*pi^2*cos(pi*x)*cos(pi*y);
+func g = cos(pi*x)*cos(pi*y);
+func uExact = cos(pi*x)*cos(pi*y);
+func udxExact = -pi * sin( pi * x) * cos(pi * y);
+func udyExact = -pi * cos (pi * x) * sin(pi * y);
+for (int i =0; i<MaxIter; i++){
+  N=2^(i+3);
+  mesh Th = square(N, N);//, label=lab);
+  Th = trunc(Th, x<0.5 | y>0.5, label=1);
+  fespace Vh(Th,P1);
+  Vh u, V;
+  solve Poisson(u,V) = int2d(Th) (grad(u)'*grad(V))
+                      - int2d(Th)(f*V)
+                      + on(1,u=g);
+  errL2[i] = sqrt(int2d(Th)((u - uExact) ^ 2));
+  Vh absError = abs(u - uExact);
+  errInf[i] = absError[].max;
+  Vh udx = dx(u), udy = dy(u);
+  errH1[i] = sqrt(int2d(Th)((udx - udxExact) ^ 2) + int2d(Th)((udy - udyExact) ^ 2));
+
+  if (i == MaxIter - 1)
+    plot(Th,u);
+}//refinement-loop
+for (int i = 1; i < MaxIter; i++){
+  orderL2[i] = log(errL2[i - 1] / errL2[i]) / log(2.);
+  orderInf[i] = log(errInf[i - 1] / errInf[i]) / log(2.);
+  orderH1[i] = log(errH1[i - 1] / errH1[i]) / log(2.);
+}
+cout << "================OUTPUT===============" << endl;
+
+cout << "errors and convergence rates: " << endl;
+
+cout << "h\t L2 error\t order\t\t Inf error\t order\t\t H1_semi error\t order" << endl;
+for (int i = 0; i < MaxIter; i++){
+int Nx = 2 ^ (i + 4);
+cout << "1/" << Nx << ":\t";
+cout.scientific << errL2(i) << "\t";
+cout.fixed << orderL2(i) << "\t";
+cout.scientific << errInf(i) << "\t";
+cout.fixed << orderInf(i) << "\t";
+cout.scientific << errH1(i) << "\t";
+cout.fixed << orderH1(i) << "\t" << endl;
+}
